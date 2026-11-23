@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Model Bahaya Titik Api · Papua Barat Daya</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  :root {
+    --merah: #c0271d; --merah-tua: #8f1d15; --krem: #fbf3ee; --krem-garis: #f1e1d8;
+    --teks: #1f1d1b; --teks-2: #6b6460; --garis: #e7e2de; --putih: #fff;
+    --k1: #1a9641; --k2: #a6d96a; --k3: #f3e66b; --k4: #f39c45; --k5: #d7191c;
+    --bayang: 0 4px 18px rgba(30, 20, 10, .12);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--teks); font-size: 14px; }
+  button { font: inherit; cursor: pointer; }
+  #app { display: flex; flex-direction: column; height: 100%; }
+
+  /* ---------- header ---------- */
+  header { display: flex; align-items: center; gap: 14px; padding: 10px 18px; background: var(--putih); border-bottom: 1px solid var(--garis); }
+  .logo { width: 38px; height: 38px; border-radius: 10px; background: #fdecea; display: grid; place-items: center; flex: none; }
+  .judul small { display: block; font-size: 11.5px; color: var(--teks-2); }
+  .judul h1 { margin: 1px 0; font-size: 19px; font-weight: 700; letter-spacing: -.01em; }
+  .judul p { margin: 0; font-size: 12px; color: var(--teks-2); }
+  .aksi { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+  .btn { border: 1px solid var(--garis); background: var(--putih); border-radius: 8px; padding: 8px 13px; display: inline-flex; gap: 6px; align-items: center; color: var(--teks); text-decoration: none; }
+  .btn:hover { background: #faf7f5; }
+  .btn.utama { background: var(--merah); border-color: var(--merah); color: #fff; }
+  .btn.utama:hover { background: var(--merah-tua); }
+  .lencana { font-size: 10.5px; font-weight: 700; letter-spacing: .04em; background: #fff6d6; color: #7a5b00; border-radius: 99px; padding: 5px 10px; }
+  .menu-unduh { position: relative; }
+  .menu-unduh .isi { display: none; position: absolute; right: 0; top: 42px; background: #fff; border: 1px solid var(--garis); border-radius: 10px; box-shadow: var(--bayang); min-width: 270px; z-index: 2000; padding: 6px; }
+  .menu-unduh.buka .isi { display: block; }
+  .menu-unduh a { display: block; padding: 9px 10px; border-radius: 7px; color: var(--teks); text-decoration: none; }
+  .menu-unduh a:hover { background: var(--krem); }
+  .menu-unduh a small { display: block; color: var(--teks-2); }
+
+  /* ---------- bar chip ---------- */
+  .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 9px 18px; background: var(--krem); border-bottom: 1px solid var(--krem-garis); }
+  .chip { display: inline-flex; align-items: center; gap: 7px; background: #fff; border: 1px solid var(--krem-garis); border-radius: 99px; padding: 5px 12px; font-size: 12.5px; white-space: nowrap; }
+  .chip b { font-size: 15px; }
+  .chip.merah { border-color: #f3b6b1; color: var(--merah); font-weight: 700; }
+  .chip.toggle { cursor: pointer; user-select: none; }
+  .chip.toggle.mati { opacity: .4; text-decoration: line-through; }
+  .titik { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+  .pemisah { width: 1px; height: 24px; background: var(--krem-garis); margin: 0 4px; }
+  .seg { display: inline-flex; gap: 4px; flex-wrap: wrap; }
+  .seg button { border: 1px solid var(--krem-garis); background: #fff; border-radius: 99px; padding: 5px 12px; font-size: 12.5px; }
+  .seg button.aktif { background: var(--merah); color: #fff; border-color: var(--merah); font-weight: 600; }
+  .cari { margin-left: auto; display: flex; gap: 6px; }
+  .cari input { border: 1px solid var(--krem-garis); border-radius: 99px; padding: 6px 12px; width: 170px; font-size: 12.5px; }
+
+  /* ---------- peta & kartu ---------- */
+  main { position: relative; flex: 1; min-height: 0; }
+  #map { position: absolute; inset: 0; background: #dfe6ea; }
+  .leaflet-image-layer.piksel { image-rendering: pixelated; }
+  .kartu { position: absolute; z-index: 1000; background: #fff; border-radius: 12px; box-shadow: var(--bayang); }
+  .kartu h3 { margin: 0; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; }
+  .kepala-kartu { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; cursor: pointer; border-bottom: 1px solid var(--garis); }
+  .kartu.ciut .badan { display: none; }
+  .kartu.ciut .kepala-kartu { border-bottom: 0; }
+  .badan { padding: 10px 14px 14px; max-height: 52vh; overflow-y: auto; }
+  .sub { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; color: var(--teks-2); text-transform: uppercase; margin: 10px 0 6px; }
+  .sub:first-child { margin-top: 0; }
+
+  #legenda { left: 12px; bottom: 26px; width: 262px; }
+  .baris-leg { display: flex; align-items: center; gap: 8px; padding: 3px 4px; border-radius: 6px; font-size: 12.5px; cursor: pointer; user-select: none; }
+  .baris-leg:hover { background: #f7f4f2; }
+  .baris-leg.mati { opacity: .35; }
+  .kotak { width: 14px; height: 14px; border-radius: 3px; flex: none; border: 1px solid rgba(0,0,0,.12); }
+  .baris-leg .ha { margin-left: auto; color: var(--teks-2); font-size: 11.5px; }
+  .gradasi { height: 10px; border-radius: 3px; margin: 4px 0 2px; }
+  .skala-teks { display: flex; justify-content: space-between; font-size: 11px; color: var(--teks-2); }
+  .catatan { font-size: 11px; color: var(--teks-2); margin: 6px 0 0; line-height: 1.4; }
+  input[type=range] { width: 100%; accent-color: var(--merah); }
+  .peralihan { display: flex; gap: 4px; }
+  .peralihan button { flex: 1; border: 1px solid var(--garis); background: #fff; border-radius: 99px; padding: 5px 0; font-size: 12px; }
+  .peralihan button.aktif { background: #3b3a8c; border-color: #3b3a8c; color: #fff; }
+
+  #info { right: 12px; top: 12px; width: 318px; display: none; }
+  #info.tampil { display: block; }
+  #info .badan { max-height: calc(100vh - 330px); }
+  .tutup { border: 1px solid var(--garis); background: #fff; border-radius: 8px; width: 30px; height: 30px; }
+  .pita { display: inline-block; font-size: 10.5px; font-weight: 700; letter-spacing: .05em; padding: 4px 9px; border-radius: 99px; text-transform: uppercase; }
+  .info-judul { font-size: 18px; font-weight: 700; margin: 8px 0 2px; }
+  .info-sub { font-size: 12px; color: var(--teks-2); }
+  .tabel { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-top: 8px; }
+  .tabel td, .tabel th { padding: 7px 0; border-bottom: 1px solid #f0ece9; vertical-align: top; }
+  .tabel th { text-align: left; font-weight: 400; color: var(--teks-2); width: 46%; }
+  .tabel td { text-align: right; }
+  .kontrib { font-size: 12px; }
+  .kontrib .r { display: grid; grid-template-columns: 92px 1fr 44px; gap: 8px; align-items: center; padding: 4px 0; }
+  .kontrib .batang { height: 8px; background: #f2eeeb; border-radius: 99px; overflow: hidden; }
+  .kontrib .batang i { display: block; height: 100%; background: var(--merah); border-radius: 99px; }
+  .kontrib .n { text-align: right; color: var(--teks-2); font-variant-numeric: tabular-nums; }
+  .kotak-catatan { background: #faf7f5; border-radius: 8px; padding: 9px 10px; font-size: 11.5px; color: var(--teks-2); line-height: 1.45; margin-top: 10px; }
+
+  #statistik { right: 12px; bottom: 26px; width: 318px; }
+  #info.tampil ~ #statistik { display: none; }
+  .stat-r { display: grid; grid-template-columns: 92px 1fr 82px; gap: 8px; align-items: center; font-size: 12px; padding: 3px 0; }
+  .stat-r .batang { height: 10px; background: #f2eeeb; border-radius: 3px; overflow: hidden; }
+  .stat-r .batang i { display: block; height: 100%; }
+  .stat-r .n { text-align: right; font-variant-numeric: tabular-nums; color: var(--teks-2); }
+
+  footer { display: flex; justify-content: space-between; gap: 12px; padding: 6px 18px; font-size: 11px; color: var(--teks-2); background: #fff; border-top: 1px solid var(--garis); }
+
+  #memuat { position: absolute; inset: 0; z-index: 3000; background: rgba(251,243,238,.92); display: grid; place-items: center; text-align: center; font-size: 13px; color: var(--teks-2); }
+  #memuat b { display: block; font-size: 15px; color: var(--teks); margin-bottom: 4px; }
+
+  /* ---------- modal ---------- */
+  #modal { position: fixed; inset: 0; z-index: 4000; background: rgba(20,15,10,.45); display: none; place-items: center; padding: 16px; }
+  #modal.tampil { display: grid; }
+  #modal .kotak-modal { background: #fff; border-radius: 14px; max-width: 640px; width: 100%; max-height: 88vh; overflow-y: auto; padding: 22px 24px; box-shadow: var(--bayang); line-height: 1.55; }
+  #modal h2 { margin: 0 0 6px; font-size: 19px; }
+  #modal h4 { margin: 16px 0 4px; font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: var(--merah); }
+  #modal p, #modal li { font-size: 13.5px; }
+  #modal code { background: #f6f1ee; padding: 2px 6px; border-radius: 5px; font-size: 12.5px; }
+  #modal table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  #modal td, #modal th { border-bottom: 1px solid var(--garis); padding: 6px 4px; text-align: left; }
+
+  .leaflet-control-zoom a, .leaflet-bar a { color: var(--teks) !important; }
+  .leaflet-tooltip { font-size: 12px; }
+
+  @media (max-width: 860px) {
+    header { flex-wrap: wrap; }
+    .aksi { margin-left: 0; }
+    .cari { margin-left: 0; width: 100%; }
+    .cari input { flex: 1; }
+    #legenda { width: calc(100% - 24px); bottom: 12px; }
+    #statistik { display: none; }
+    #info { width: calc(100% - 24px); top: 12px; }
+    footer { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="logo">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#c0271d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2c1 3.5 5 6 5 11a5 5 0 0 1-10 0c0-2.5 1.5-4 2.5-5.5C10 10 11 11 12 11c0-3-1-6 0-9z"/></svg>
+    </div>
+    <div class="judul">
+      <small>Kelompok 3 K-02 › GD4103 Sistem Informasi Geografis</small>
+      <h1>Model Bahaya Titik Api Papua Barat Daya</h1>
+      <p>Pembobotan 6 parameter · titik panas VIIRS · resolusi analisis ±30 m</p>
+    </div>
+    <div class="aksi">
+      <button class="btn" id="btnCara">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+        Cara membaca
+      </button>
+      <div class="menu-unduh" id="menuUnduh">
+        <button class="btn utama" id="btnUnduh">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg>
+          Unduh data
+        </button>
+        <div class="isi">
+          <a href="unduh/kelas_bahaya_papua_barat_daya.tif" download>Peta kelas bahaya (GeoTIFF)<small>Resolusi asli ±30 m, kelas 1–5, WGS 84</small></a>
+          <a href="unduh/titik_panas_papua_barat_daya.csv" download>Titik panas + skor model (CSV)<small>Koordinat, kelas, skor maks/rata-rata, % gambut</small></a>
+          <a href="data/titik_panas.geojson" download>Titik panas (GeoJSON)<small>Untuk dibuka di QGIS</small></a>
+        </div>
+      </div>
+      <span class="lencana">PJBL SIG 2026</span>
+    </div>
+  </header>
+
+  <div class="bar">
+    <span class="chip merah"><svg width="12" height="12" viewBox="0 0 24 24" fill="#c0271d"><path d="M12 2c1 3.5 5 6 5 11a5 5 0 0 1-10 0c0-2.5 1.5-4 2.5-5.5C10 10 11 11 12 11c0-3-1-6 0-9z"/></svg><b id="nTitik">–</b> TITIK PANAS</span>
+    <span id="chipKelasTitik" style="display:contents"></span>
+    <span class="pemisah"></span>
+    <span class="chip">Tampilkan</span>
+    <div class="seg" id="segLayer"></div>
+    <div class="cari">
+      <input id="inputCari" placeholder="Cari koordinat: -1.3, 132.1">
+      <button class="btn" id="btnCari" style="padding:5px 12px">Cari</button>
+    </div>
+  </div>
+
+  <main>
+    <div id="map"></div>
+
+    <div class="kartu" id="legenda">
+      <div class="kepala-kartu" data-ciut="legenda"><h3>Legenda</h3><span>▾</span></div>
+      <div class="badan">
+        <div class="sub" id="judulLeg">Kelas bahaya</div>
+        <div id="isiLeg"></div>
+        <div class="sub">Transparansi layer</div>
+        <input type="range" id="opacity" min="0" max="1" step="0.05" value="0.85">
+        <div class="sub">Titik panas VIIRS</div>
+        <label class="baris-leg" style="cursor:pointer"><input type="checkbox" id="cekTitik" checked> Tampilkan titik panas</label>
+        <div class="sub">Peta dasar</div>
+        <div class="peralihan" id="petaDasar">
+          <button data-b="osm" class="aktif">OSM</button>
+          <button data-b="terang">Terang</button>
+          <button data-b="citra">Citra</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="kartu" id="info">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:14px 14px 0">
+        <span class="pita" id="infoPita">–</span>
+        <button class="tutup" id="tutupInfo" aria-label="Tutup">✕</button>
+      </div>
+      <div class="badan" id="infoIsi"></div>
+    </div>
+
+    <div class="kartu" id="statistik">
+      <div class="kepala-kartu" data-ciut="statistik"><h3>Statistik model</h3><span>▾</span></div>
+      <div class="badan" id="statIsi"></div>
+    </div>
+
+    <div id="memuat"><div><b>Memuat data model…</b>Peta kelas bahaya dan 6 parameter</div></div>
+  </main>
+
+  <footer>
+    <span>Data: NASA FIRMS VIIRS 375 m · CHIRPS · Peta gambut · Sentinel-2 (NDVI) · Landsat 8/9 (LST) · DEMNAS BIG</span>
+    <span>H = 0,347 Titik panas + 0,234 Curah hujan + 0,216 Gambut + 0,085 NDVI + 0,081 LST + 0,037 DEMNAS</span>
+  </footer>
+</div>
+
+<div id="modal">
+  <div class="kotak-modal">
+    <div style="display:flex;justify-content:space-between;align-items:start;gap:12px">
+      <h2>Cara membaca peta ini</h2>
+      <button class="tutup" id="tutupModal">✕</button>
+    </div>
+    <p>Peta ini menunjukkan <b>tingkat bahaya munculnya titik api</b> di Provinsi Papua Barat Daya, hasil pembobotan (weighted overlay) enam parameter yang masing-masing sudah diberi skor 1 (bahaya rendah) sampai 5 (bahaya tinggi).</p>
+    <h4>Rumus</h4>
+    <table>
+      <tr><th>Parameter</th><th>Bobot</th></tr>
+      <tr><td>Titik panas (VIIRS)</td><td>0,347</td></tr>
+      <tr><td>Curah hujan</td><td>0,234</td></tr>
+      <tr><td>Gambut</td><td>0,216</td></tr>
+      <tr><td>NDVI</td><td>0,085</td></tr>
+      <tr><td>LST (suhu permukaan)</td><td>0,081</td></tr>
+      <tr><td>DEMNAS (elevasi)</td><td>0,037</td></tr>
+    </table>
+    <p>Nilai <code>H = Σ bobot × skor</code> berada di rentang 1–5, lalu dikelaskan: <b>Sangat rendah</b> &lt; 1,8 · <b>Rendah</b> 1,8–2,6 · <b>Sedang</b> 2,6–3,4 · <b>Tinggi</b> 3,4–4,2 · <b>Sangat tinggi</b> ≥ 4,2.</p>
+    <h4>Cara memakai</h4>
+    <ul>
+      <li><b>Klik di mana saja di peta</b> untuk melihat kelas bahaya, nilai H, dan skor tiap parameter beserta kontribusinya.</li>
+      <li><b>Klik titik</b> untuk melihat detail titik panas: skor model di sekitarnya dan persentase gambut.</li>
+      <li>Tombol di bar atas mengganti layer: kelas bahaya, nilai H, atau salah satu parameter.</li>
+      <li>Klik baris legenda untuk menyembunyikan/menampilkan kelas tertentu; klik chip kelas titik panas untuk menyaringnya.</li>
+    </ul>
+    <h4>Catatan penting</h4>
+    <ul>
+      <li><b>Titik panas ≠ kebakaran pasti.</b> Titik panas adalah anomali panas yang terdeteksi satelit VIIRS; ia indikasi kebakaran, bukan konfirmasi lapangan.</li>
+      <li><b>Resolusi tampilan web ±180 m.</b> Agar ringan, data 30 m diperkecil; setiap sel peta kelas menampilkan <i>kelas tertinggi</i> di dalamnya supaya area kecil berbahaya tetap terlihat. Angka luas di panel statistik dihitung dari data asli 30 m. Data asli bisa diunduh lewat tombol <i>Unduh data</i>.</li>
+      <li>Pola kotak-kotak besar berasal dari resolusi data curah hujan (±5 km).</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+/* ============================ KONFIGURASI ============================ */
+const DATA = 'data/';
+const KELAS = {
+  1: { nama: 'Sangat rendah', warna: '#1a9641' },
+  2: { nama: 'Rendah',        warna: '#a6d96a' },
+  3: { nama: 'Sedang',        warna: '#f3e66b' },
+  4: { nama: 'Tinggi',        warna: '#f39c45' },
+  5: { nama: 'Sangat tinggi', warna: '#d7191c' }
+};
+const PARAM = {
+  titik_api:   { nama: 'Titik panas', bobot: 0.347, ket: 'Skor 5 = piksel terdeteksi titik panas VIIRS, 1 = tidak terdeteksi.' },
+  curah_hujan: { nama: 'Curah hujan', bobot: 0.234, ket: 'Skor tinggi = curah hujan rendah (lebih kering).' },
+  gambut:      { nama: 'Gambut',      bobot: 0.216, ket: 'Skor 5 = lahan gambut, 1 = non-gambut.' },
+  ndvi:        { nama: 'NDVI',        bobot: 0.085, ket: 'Skor kerapatan vegetasi sebagai bahan bakar.' },
+  lst:         { nama: 'LST',         bobot: 0.081, ket: 'Skor tinggi = suhu permukaan lebih panas.' },
+  dem:         { nama: 'DEMNAS',      bobot: 0.037, ket: 'Skor tinggi = dataran rendah.' }
+};
+const LAYER = [
+  { id: 'kelas', nama: 'Kelas bahaya' },
+  { id: 'H', nama: 'Nilai H' },
+  ...Object.entries(PARAM).map(([id, p]) => ({ id, nama: p.nama }))
+];
+const PAL_PARAM = ['#ffffcc', '#fed976', '#fd8d3c', '#e31a1c', '#800026'];
+const WARNA_TITIK = { 'Sangat Tinggi': '#c0271d', 'Tinggi': '#ef7d22', 'Sedang': '#c9a227', 'Rendah': '#7aa33a', 'Sangat Rendah': '#2e7d32' };
+/* ===================================================================== */
+
+const fmt = (n, d = 0) => n.toLocaleString('id-ID', { minimumFractionDigits: d, maximumFractionDigits: d });
+const hex = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+const kelasDariH = h => h < 1.8 ? 1 : h < 2.6 ? 2 : h < 3.4 ? 3 : h < 4.2 ? 4 : 5;
+const merc = lat => Math.log(Math.tan(Math.PI / 4 + lat * Math.PI / 360));
+
+const state = { layer: 'kelas', kelasAktif: new Set([1, 2, 3, 4, 5]), titikAktif: new Set(), opacity: 0.85 };
+const grid = {};            // id -> Uint8Array
+let stats, W, H, bounds, kanvas, overlay, lapisTitik, penanda;
+
+/* ---------- peta ---------- */
+const map = L.map('map', { zoomControl: false, attributionControl: true, minZoom: 6 });
+L.control.zoom({ position: 'topleft' }).addTo(map);
+L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(map);
+const petaDasar = {
+  terang: L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { attribution: '&copy; OpenStreetMap &copy; CARTO', subdomains: 'abcd', maxZoom: 19 }),
+  citra: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: 'Citra &copy; Esri', maxZoom: 19 }),
+  osm: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors', maxZoom: 19 })
+};
+petaDasar.osm.addTo(map);
+
+const FitControl = L.Control.extend({
+  onAdd() {
+    const b = L.DomUtil.create('div', 'leaflet-bar');
+    b.innerHTML = '<a href="#" title="Lihat seluruh provinsi" style="font-size:15px">⤢</a>';
+    L.DomEvent.on(b, 'click', e => { L.DomEvent.preventDefault(e); map.fitBounds(bounds); });
+    return b;
+  }
+});
+new FitControl({ position: 'topleft' }).addTo(map);
+
+/* Overlay kanvas: layer raster digambar di <canvas>, lalu diletakkan seperti ImageOverlay */
+const CanvasOverlay = L.ImageOverlay.extend({
+  _initImage() {
+    const el = this._image = this._url;
+    L.DomUtil.addClass(el, 'leaflet-image-layer');
+    L.DomUtil.addClass(el, 'piksel');
+    if (this._zoomAnimated) L.DomUtil.addClass(el, 'leaflet-zoom-animated');
+    el.onselectstart = L.Util.falseFn;
+    el.onmousemove = L.Util.falseFn;
+  }
+});
+
+/* ---------- memuat data ---------- */
+function muatGambar(url) {
+  return new Promise((res, rej) => {
+    const img = new Image();
+    img.onload = () => res(img);
+    img.onerror = () => rej(new Error('Gagal memuat ' + url));
+    img.src = url;
+  });
+}
+async function muatGrid(id) {
+  if (grid[id]) return grid[id];
+  const img = await muatGambar(DATA + id + '.png');
+  const c = document.createElement('canvas');
+  c.width = img.naturalWidth; c.height = img.naturalHeight;
+  const ctx = c.getContext('2d', { willReadFrequently: true });
+  ctx.drawImage(img, 0, 0);
+  const rgba = ctx.getImageData(0, 0, c.width, c.height).data;   // butuh dibuka lewat http(s)
+  const a = new Uint8Array(c.width * c.height);
+  for (let i = 0, j = 0; j < a.length; i += 4, j++) a[j] = rgba[i];
+  grid[id] = a;
+  return a;
+}
+
+/* ---------- menggambar layer ---------- */
+function warnaH(h) {   // gradasi kontinu 1–5 mengikuti warna kelas
+  const stop = [1, 1.8, 2.6, 3.4, 4.2, 5];
+  const col = [KELAS[1].warna, KELAS[1].warna, KELAS[2].warna, KELAS[3].warna, KELAS[4].warna, KELAS[5].warna].map(hex);
+  for (let i = 1; i < stop.length; i++) if (h <= stop[i]) {
+    const t = (h - stop[i - 1]) / (stop[i] - stop[i - 1]);
+    return col[i - 1].map((v, k) => Math.round(v + (col[i][k] - v) * t));
+  }
+  return col[5];
+}
+const LUT_H = Array.from({ length: 256 }, (_, v) => v ? warnaH(v / 50) : null);
+
+async function gambar() {
+  const id = state.layer;
+  const a = await muatGrid(id);
+  const ctx = kanvas.getContext('2d');
+  const img = ctx.createImageData(W, H);
+  const d = img.data;
+  let lut;
+  if (id === 'kelas') lut = [null, ...[1, 2, 3, 4, 5].map(k => state.kelasAktif.has(k) ? hex(KELAS[k].warna) : null)];
+  else if (id === 'H') lut = LUT_H;
+  else lut = [null, ...PAL_PARAM.map(hex)];
+  for (let j = 0, i = 0; j < a.length; j++, i += 4) {
+    const c = lut[a[j]];
+    if (c) { d[i] = c[0]; d[i + 1] = c[1]; d[i + 2] = c[2]; d[i + 3] = 255; }
+  }
+  ctx.putImageData(img, 0, 0);
+  overlay.setOpacity(state.opacity);
+  isiLegenda();
+}
+
+/* ---------- legenda ---------- */
+function isiLegenda() {
+  const id = state.layer, el = document.getElementById('isiLeg');
+  document.getElementById('judulLeg').textContent = LAYER.find(l => l.id === id).nama;
+  if (id === 'kelas') {
+    el.innerHTML = [5, 4, 3, 2, 1].map(k => `
+      <div class="baris-leg ${state.kelasAktif.has(k) ? '' : 'mati'}" data-k="${k}">
+        <span class="kotak" style="background:${KELAS[k].warna}"></span>${KELAS[k].nama}
+        <span class="ha">${pctLuas(k)}</span></div>`).join('') +
+      '<p class="catatan">Klik baris untuk menyembunyikan/menampilkan kelas. Persen = bagian luas provinsi.</p>';
+    el.querySelectorAll('.baris-leg').forEach(r => r.onclick = () => {
+      const k = Number(r.dataset.k);
+      state.kelasAktif.has(k) ? state.kelasAktif.delete(k) : state.kelasAktif.add(k);
+      gambar();
+    });
+  } else if (id === 'H') {
+    const g = [1, 1.8, 2.6, 3.4, 4.2, 5].map(v => `rgb(${warnaH(v).join(',')}) ${(v - 1) / 4 * 100}%`).join(',');
+    el.innerHTML = `<div class="gradasi" style="background:linear-gradient(90deg,${g})"></div>
+      <div class="skala-teks"><span>1,0</span><span>1,8</span><span>2,6</span><span>3,4</span><span>4,2</span><span>5,0</span></div>
+      <p class="catatan">Nilai H = Σ bobot × skor. Di data ini H berkisar ${fmt(stats.H.min, 2)}–${fmt(stats.H.max, 2)} (rata-rata ${fmt(stats.H.mean, 2)}).</p>`;
+  } else {
+    const p = PARAM[id], lp = stats.luas_param_ha[id], tot = Object.values(lp).reduce((x, y) => x + y, 0);
+    el.innerHTML = [5, 4, 3, 2, 1].map(k => `
+      <div class="baris-leg" style="cursor:default"><span class="kotak" style="background:${PAL_PARAM[k - 1]}"></span>Skor ${k}
+        <span class="ha">${lp[k] ? fmt(lp[k] / tot * 100, 1) + '%' : '–'}</span></div>`).join('') +
+      `<p class="catatan"><b>Bobot ${fmt(p.bobot, 3)}.</b> ${p.ket}</p>`;
+  }
+}
+function pctLuas(k) {
+  const tot = Object.values(stats.luas_ha).reduce((x, y) => x + y, 0);
+  const p = stats.luas_ha[k] / tot * 100;
+  return p < 0.1 ? '< 0,1%' : fmt(p, 1) + '%';
+}
+
+/* ---------- statistik ---------- */
+function isiStatistik() {
+  const tot = Object.values(stats.luas_ha).reduce((x, y) => x + y, 0);
+  const maks = Math.max(...Object.values(stats.luas_ha));
+  const tinggi = stats.luas_ha[4] + stats.luas_ha[5];
+  const t = stats.titik_per_kelas, nT = stats.n_titik;
+  const tT = (t['Tinggi'] || 0) + (t['Sangat Tinggi'] || 0);
+  document.getElementById('statIsi').innerHTML = `
+    <div class="sub">Luas per kelas bahaya</div>
+    ${[5, 4, 3, 2, 1].map(k => `<div class="stat-r"><span>${KELAS[k].nama}</span>
+      <span class="batang"><i style="width:${Math.max(1, stats.luas_ha[k] / maks * 100)}%;background:${KELAS[k].warna}"></i></span>
+      <span class="n">${fmt(stats.luas_ha[k])} ha</span></div>`).join('')}
+    <p class="catatan">Total ${fmt(tot)} ha (dihitung dari raster 30 m).</p>
+    <div class="sub">Titik panas per kelas</div>
+    ${Object.keys(WARNA_TITIK).filter(k => t[k]).map(k => `<div class="stat-r"><span>${k}</span>
+      <span class="batang"><i style="width:${t[k] / nT * 100}%;background:${WARNA_TITIK[k]}"></i></span>
+      <span class="n">${t[k]} (${fmt(t[k] / nT * 100, 0)}%)</span></div>`).join('')}
+    <div class="kotak-catatan"><b>${fmt(tT / nT * 100, 1)}%</b> titik panas berada di kelas tinggi–sangat tinggi, padahal kedua kelas itu hanya mencakup <b>${fmt(tinggi)} ha (${fmt(tinggi / tot * 100, 2)}%)</b> luas provinsi.
+    Ingat: titik panas juga dipakai sebagai input model (bobot 0,347), jadi angka ini belum bisa dianggap validasi independen.</div>`;
+}
+
+/* ---------- info klik ---------- */
+function nilaiDi(latlng) {
+  const x = Math.floor((latlng.lng - bounds.getWest()) / (bounds.getEast() - bounds.getWest()) * W);
+  const yN = merc(bounds.getNorth()), yS = merc(bounds.getSouth());
+  const y = Math.floor((yN - merc(latlng.lat)) / (yN - yS) * H);
+  if (x < 0 || y < 0 || x >= W || y >= H) return null;
+  const i = y * W + x, out = {};
+  for (const id of ['kelas', 'H', ...Object.keys(PARAM)]) out[id] = grid[id] ? grid[id][i] : undefined;
+  return out;
+}
+function htmlAnalisis(v) {
+  if (!v || !v.kelas) return `<div class="kotak-catatan">Lokasi ini di luar wilayah analisis (laut atau di luar provinsi).</div>`;
+  const rows = Object.entries(PARAM).map(([id, p]) => {
+    const s = v[id];
+    return s ? `<div class="r"><span>${p.nama} <span style="color:var(--teks-2)">(${s})</span></span>
+      <span class="batang"><i style="width:${p.bobot * s / 1.735 * 100}%"></i></span>
+      <span class="n">${fmt(p.bobot * s, 3)}</span></div>` : '';
+  }).join('');
+  const hSum = Object.entries(PARAM).reduce((t, [id, p]) => t + (v[id] || 0) * p.bobot, 0);
+  return `
+    <table class="tabel">
+      <tr><th>Kelas bahaya</th><td><span class="pita" style="background:${KELAS[v.kelas].warna}33;color:#222">${KELAS[v.kelas].nama}</span></td></tr>
+      <tr><th>Nilai H (sel)</th><td><b>${v.H ? fmt(v.H / 50, 2) : '–'}</b> <span style="color:var(--teks-2)">dari 5</span></td></tr>
+    </table>
+    <div class="sub" style="margin-top:14px">Kontribusi parameter (bobot × skor)</div>
+    <div class="kontrib">${rows}
+      <div class="r" style="border-top:1px solid var(--garis);margin-top:4px;padding-top:7px"><b>Jumlah</b><span></span><span class="n"><b>${fmt(hSum, 2)}</b></span></div>
+    </div>
+    <div class="kotak-catatan">Kelas dan nilai H menampilkan nilai <b>tertinggi</b> dalam sel ±180 m; skor parameter diambil di titik tengah sel, sehingga jumlahnya bisa sedikit berbeda dari H.</div>`;
+}
+function tampilInfo(pita, warnaPita, judul, sub, isi) {
+  const p = document.getElementById('infoPita');
+  p.textContent = pita; p.style.background = warnaPita + '22'; p.style.color = warnaPita;
+  document.getElementById('infoIsi').innerHTML = `<div class="info-judul">${judul}</div><div class="info-sub">${sub}</div>${isi}`;
+  document.getElementById('info').classList.add('tampil');
+}
+function tandai(latlng) {
+  if (penanda) map.removeLayer(penanda);
+  penanda = L.circleMarker(latlng, { radius: 7, color: '#111', weight: 2, fill: false }).addTo(map);
+}
+function infoLokasi(latlng) {
+  const v = nilaiDi(latlng);
+  tandai(latlng);
+  const k = v && v.kelas;
+  tampilInfo(k ? 'Bahaya ' + KELAS[k].nama : 'Di luar wilayah', k ? (k >= 4 ? '#c0271d' : k === 3 ? '#9a7b00' : '#2e7d32') : '#666',
+    'Lokasi terpilih', `${fmt(latlng.lat, 5)}, ${fmt(latlng.lng, 5)}`, htmlAnalisis(v));
+}
+function infoTitik(f, latlng) {
+  const p = f.properties, w = WARNA_TITIK[p.kelas] || '#666';
+  tandai(latlng);
+  tampilInfo('Titik panas · ' + p.kelas, w, `Titik panas #${p.id}`,
+    `Papua Barat Daya · ${fmt(latlng.lat, 5)}, ${fmt(latlng.lng, 5)}`,
+    `<table class="tabel">
+      <tr><th>Kelas bahaya model</th><td><b style="color:${w}">${p.kelas}</b></td></tr>
+      <tr><th>Skor model maksimum</th><td>${fmt(p.skor_maks, 3)}</td></tr>
+      <tr><th>Skor model rata-rata</th><td>${fmt(p.skor_rata, 3)}</td></tr>
+      <tr><th>Persentase gambut</th><td>${fmt(p.persen_gambut, 1)}%</td></tr>
+    </table>
+    <div class="sub" style="margin-top:14px">Analisis piksel di lokasi ini</div>
+    ${htmlAnalisis(nilaiDi(latlng))}
+    <div class="kotak-catatan">Titik panas adalah anomali panas yang terdeteksi satelit VIIRS (375 m): indikasi kuat kebakaran, bukan konfirmasi lapangan.</div>`);
+}
+
+/* ---------- titik panas ---------- */
+async function muatTitik() {
+  const gj = await (await fetch(DATA + 'titik_panas.geojson')).json();
+  const urut = Object.keys(WARNA_TITIK);
+  gj.features.forEach(f => state.titikAktif.add(f.properties.kelas));
+  lapisTitik = L.geoJSON(gj, {
+    filter: f => state.titikAktif.has(f.properties.kelas),
+    pointToLayer: (f, ll) => L.circleMarker(ll, {
+      radius: f.properties.kelas === 'Sangat Tinggi' ? 6.5 : 5.5, color: '#fff', weight: 1.5,
+      fillColor: WARNA_TITIK[f.properties.kelas] || '#666', fillOpacity: 1
+    }),
+    onEachFeature: (f, l) => {
+      l.bindTooltip(`#${f.properties.id} · ${f.properties.kelas}`, { direction: 'top', offset: [0, -4] });
+      l.on('click', e => { L.DomEvent.stopPropagation(e); infoTitik(f, e.latlng); });
+    }
+  }).addTo(map);
+  lapisTitik._gj = gj;
+
+  document.getElementById('nTitik').textContent = gj.features.length;
+  const cnt = {};
+  gj.features.forEach(f => cnt[f.properties.kelas] = (cnt[f.properties.kelas] || 0) + 1);
+  const wadah = document.getElementById('chipKelasTitik');
+  wadah.innerHTML = urut.filter(k => cnt[k]).map(k =>
+    `<span class="chip toggle" data-k="${k}" title="Klik untuk menyaring"><span class="titik" style="background:${WARNA_TITIK[k]}"></span><b>${cnt[k]}</b> ${k.toLowerCase()}</span>`).join('');
+  wadah.querySelectorAll('.chip').forEach(c => c.onclick = () => {
+    const k = c.dataset.k;
+    state.titikAktif.has(k) ? state.titikAktif.delete(k) : state.titikAktif.add(k);
+    c.classList.toggle('mati', !state.titikAktif.has(k));
+    lapisTitik.clearLayers();
+    lapisTitik.addData(lapisTitik._gj);
+  });
+}
+
+/* ---------- kontrol UI ---------- */
+function pasangKontrol() {
+  const seg = document.getElementById('segLayer');
+  seg.innerHTML = LAYER.map(l => `<button data-id="${l.id}" class="${l.id === state.layer ? 'aktif' : ''}">${l.nama}</button>`).join('');
+  seg.querySelectorAll('button').forEach(b => b.onclick = async () => {
+    state.layer = b.dataset.id;
+    seg.querySelectorAll('button').forEach(x => x.classList.toggle('aktif', x === b));
+    await gambar();
+  });
+  document.getElementById('opacity').oninput = e => { state.opacity = Number(e.target.value); overlay.setOpacity(state.opacity); };
+  document.getElementById('cekTitik').onchange = e => e.target.checked ? lapisTitik.addTo(map) : map.removeLayer(lapisTitik);
+  document.querySelectorAll('#petaDasar button').forEach(b => b.onclick = () => {
+    Object.values(petaDasar).forEach(l => map.removeLayer(l));
+    petaDasar[b.dataset.b].addTo(map).bringToBack();
+    document.querySelectorAll('#petaDasar button').forEach(x => x.classList.toggle('aktif', x === b));
+  });
+  document.querySelectorAll('[data-ciut]').forEach(h => h.onclick = () => document.getElementById(h.dataset.ciut).classList.toggle('ciut'));
+  document.getElementById('tutupInfo').onclick = () => {
+    document.getElementById('info').classList.remove('tampil');
+    if (penanda) { map.removeLayer(penanda); penanda = null; }
+  };
+  const modal = document.getElementById('modal');
+  document.getElementById('btnCara').onclick = () => modal.classList.add('tampil');
+  document.getElementById('tutupModal').onclick = () => modal.classList.remove('tampil');
+  modal.onclick = e => { if (e.target === modal) modal.classList.remove('tampil'); };
+  const mu = document.getElementById('menuUnduh');
+  document.getElementById('btnUnduh').onclick = e => { e.stopPropagation(); mu.classList.toggle('buka'); };
+  document.addEventListener('click', () => mu.classList.remove('buka'));
+  const cari = () => {
+    const m = document.getElementById('inputCari').value.replace(/\s/g, '').split(',').map(Number);
+    if (m.length !== 2 || m.some(isNaN)) return alert('Format: lintang, bujur — contoh: -1.3, 132.1');
+    const ll = L.latLng(m[0], m[1]);
+    map.setView(ll, Math.max(map.getZoom(), 11));
+    infoLokasi(ll);
+  };
+  document.getElementById('btnCari').onclick = cari;
+  document.getElementById('inputCari').onkeydown = e => { if (e.key === 'Enter') cari(); };
+  map.on('click', e => infoLokasi(e.latlng));
+}
+
+/* ---------- mulai ---------- */
+(async function mulai() {
+  try {
+    stats = await (await fetch(DATA + 'stats.json')).json();
+    [W, H] = stats.grid;
+    bounds = L.latLngBounds(stats.bounds);
+    map.fitBounds(bounds);
+    map.setMaxBounds(bounds.pad(0.6));
+    kanvas = document.createElement('canvas');
+    kanvas.width = W; kanvas.height = H;
+    overlay = new CanvasOverlay(kanvas, bounds, { opacity: state.opacity }).addTo(map);
+    pasangKontrol();
+    await muatGrid('kelas');
+    await gambar();
+    isiStatistik();
+    await muatTitik();
+    document.getElementById('memuat').remove();
+    // muat layer lain di latar belakang (untuk info klik)
+    for (const id of ['H', ...Object.keys(PARAM)]) await muatGrid(id);
+  } catch (err) {
+    console.error(err);
+    document.getElementById('memuat').innerHTML = `<div><b>Data gagal dimuat</b>
+      Buka halaman ini lewat link GitHub Pages (https://…github.io/…),<br>bukan dengan klik dua kali file index.html.<br>
+      <small style="color:#999">${err.message}</small></div>`;
+  }
+})();
+</script>
+</body>
+</html>
